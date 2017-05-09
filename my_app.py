@@ -25,8 +25,8 @@ def len_text(text):
 	text1 = text.split(' ')
 	return len(text1)
    
- @bot.message_handler(func=lambda m: True)  # этот обработчик реагирует на любое сообщение
- def send_len(message):
+@bot.message_handler(func=lambda m: True)  # этот обработчик реагирует на любое сообщение
+def send_len(message):
 	if len_text(message.text) == 1:
 		bot.send_message(message.chat.id, 'В вашем сообщении {} слово.'.format(len_text(message.text)))
 	elif len_text(message.text) < 5:
