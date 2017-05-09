@@ -23,16 +23,24 @@ def send_welcome(message):
 
 def len_text(text):
         text1 = text.split(' ')
-        return len(text1)
+        alf = ':;"?><,.*()&^%$#@!{}{]\|/'
+        x1 = []
+        for i in text1:
+                if i in alf:
+                        continue
+                else:
+                        x1.append(i)
+        return len(x1)
    
 @bot.message_handler(func=lambda m: True)  # этот обработчик реагирует на любое сообщение
 def send_len(message):
-        if len_text(message.text) == 1:
+        if str(len_text(message.text)).endswith(1):
                 bot.send_message(message.chat.id, 'В вашем сообщении {} слово.'.format(len_text(message.text)))
         elif len_text(message.text) < 5:
                 bot.send_message(message.chat.id, 'В вашем сообщении {} слова.'.format(len_text(message.text)))
         else:
                 bot.send_message(message.chat.id, 'В вашем сообщении {} слов.'.format(len_text(message.text)))
+
 
 # пустая главная страничка для проверки
 @app.route('/', methods=['GET', 'HEAD'])
