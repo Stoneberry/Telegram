@@ -16,8 +16,7 @@ bot.set_webhook(url=WEBHOOK_URL_BASE+WEBHOOK_URL_PATH)
 
 app = flask.Flask(__name__)
 
-def len_mes(message.text):
-    text = message.text
+def len_mes(text):
     sgn = ',.?/\[]{};:!@#$%^&*()_+=-<>'
     words = text.split(' ')
     new = []
