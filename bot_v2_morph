@@ -1,0 +1,118 @@
+# -*- coding: utf-8 -*-
+import flask
+import telebot
+import conf
+import pymorphy2
+import random
+
+WEBHOOK_URL_BASE = "https://{}:{}".format(conf.WEBHOOK_HOST, conf.WEBHOOK_PORT)
+WEBHOOK_URL_PATH = "/{}/".format(conf.TOKEN)
+
+bot = telebot.TeleBot(conf.TOKEN, threaded=False)  # бесплатный аккаунт pythonanywhere запрещает работу с несколькими тредами
+
+# удаляем предыдущие вебхуки, если они были
+bot.remove_webhook()
+
+# ставим новый вебхук = Слышь, если кто мне напишет, стукни сюда — url
+bot.set_webhook(url=WEBHOOK_URL_BASE+WEBHOOK_URL_PATH)
+
+app = flask.Flask(__name__)
+
+# этот обработчик запускает функцию send_welcome, когда пользователь отправляет команды /start или /help
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+	bot.send_message(message.chat.id, "Здравствуйте! Это бот, c которым можно поговорить. Напишите ему слово или фразу на русском.")
+
+def opening():
+    f = open('/home/StnBerry/mysite/1grams-3.txt', 'r', encoding = 'utf-8')
+    lines = f.readlines()
+    words = []
+    for line in lines:
+        word = line.split('\t')
+        words.append(word[1].strip('\n'))
+    return words
+
+def morpho(words, morph): # - словарь, в котором ключ - неизменяемые показатели, а значение - сами слова
+    d = {}
+    for word in words:
+        p = morph.parse(word)
+        tags = str(p[0].tag).split(' ')
+        no_change = tags[0]
+        if no_change in d:
+            d[no_change].append(word)
+        else:
+            d[no_change] = []
+            d[no_change].append(word)
+    return d
+
+def tagz(change):
+    tags = change.split(',')
+    a1 = set()
+    for i in tags:
+        a1.add(i)
+    return a1
+
+def pip(word, words_in_text, answer, word_in_form):
+    point = ['?','!','.']
+    if word == words_in_text[-1]:
+        answer = answer + word_in_form + random.choice(point)
+    else:
+        answer = answer + word_in_form + ' '
+    return answer
+
+
+def questions(text, d, morph):
+    if text == '':
+        return 'try again'
+    elif text == ' ':
+        return 'try again'
+    else:
+        words_in_text = text.split(' ')
+        answer = ''
+        for word in words_in_text:
+            word = word.strip('.,":;/\][{}|_+=-)(*&^%$#@!?<>')
+            p = morph.parse(word)
+            tags = str(p[0].tag).split(' ')
+            no_change = tags[0]
+            if no_change in d:
+                if len(tags) != 1:
+                    word_ans = random.choice(d[no_change])
+                    p1 = morph.parse(word_ans)[0]
+                    word_in_form = p1.inflect(tagz(tags[1]))
+                    if word_in_form == None:
+                        answer = pip(word, words_in_text, answer, word)
+                    else:
+                        answer = pip(word, words_in_text, answer, word_in_form.word)
+                else:
+                    word_ans = random.choice(d[no_change])
+                    p1 = morph.parse(word_ans)[0]
+                    word_in_form = p1.inflect(tagz(no_change)).word
+                    answer = pip(word, words_in_text, answer, word_in_form)
+            else:
+                answer = pip(word, words_in_text, answer, word)
+        return answer
+
+@bot.message_handler(func=lambda m: True)  # этот обработчик реагирует все прочие сообщения
+def send_len(message):
+    morph = pymorphy2.MorphAnalyzer()
+    a0 = opening()
+    a1 = morpho(a0, morph)
+    a2 = questions(message.text, a1, morph)
+    bot.send_message(message.chat.id, a2)
+
+# пустая главная страничка для проверки
+@app.route('/', methods=['GET', 'HEAD'])
+def index():
+    return 'ok'
+
+
+# обрабатываем вызовы вебхука = функция, которая запускается, когда к нам постучался телеграм
+@app.route(WEBHOOK_URL_PATH, methods=['POST'])
+def webhook():
+    if flask.request.headers.get('content-type') == 'application/json':
+        json_string = flask.request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    else:
+        flask.abort(403)
